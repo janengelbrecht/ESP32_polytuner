@@ -26,7 +26,7 @@
  * - Brugerdefinerede stemningsprofiler gemt i NVS [NY FUNKTION].
  *
  * * 2. OVERORDNET SYSTEMBESKRIVELSE:
- * Tuneren fungerer som en hybrid-analysator. Den skifter sømløst mellem to matematiske domæner:
+ * Tuneren fungerer som en hybrid-analysator. Den skifter umærkeligt mellem to matematiske domæner:
  * - Polyfonisk Mode: Bruger FFT (Fast Fourier Transform) til at give et øjeblikkeligt overblik over alle strenges stemning.
  * - Monofonisk Mode: Bruger YIN-algoritmen (Autokorrelation) til at finde den præcise frekvens ned til 0.1 cents afvigelse.
  * - Strobe Mode: Simuleret strobe-visning baseret på cent-afvigelse.
