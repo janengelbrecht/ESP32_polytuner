@@ -1,0 +1,157 @@
+======================================================================================================================================================
+SYSTEM REQUIREMENTS SPECIFICATION (SRS): ESP32 MULTI-INSTRUMENT POLYTUNER V4.0
+======================================================================================================================================================
+DOKUMENTTYPE:       Kravspecifikation
+DOKUMENT NUMMER:    SRS-ESP32-PT-400-2026-REV3
+SYSTEM:             ESP32 Avanceret Polyfonisk Multi-Instrument Tuner (v4.0.0)
+DATO:               31. marts 2026
+FORFATTER:          Jan Engelbrecht Pedersen
+STATUS:             Industrial Standard / Final Release
+======================================================================================================================================================
+
+INDHOLDSFORTEGNELSE
+------------------------------------------------------------------------------------------------------------------------------------------------------
+1. BRUGERGRÆNSEFLADE & NAVIGATION (UI/UX)
+   1.1 Hierarkisk Menustruktur [REQ-UI-101]
+   1.2 Fysisk Kontrol-interface [REQ-UI-102]
+   1.3 Adaptiv Visningsteknologi [REQ-UI-103]
+   1.4 Cents-skalering og overflow-indikator [REQ-UI-104]
+   1.5 Strengenavne i stedet for numre [REQ-UI-105]
+   1.6 LOCKED-tærskel og visuel bekræftelse [REQ-UI-106]
+   1.7 Polyfonisk multistrengsvisning [REQ-UI-107]
+   1.8 Strobe-mode til ultrahøj præcision [REQ-UI-108]
+2. ALGORITMISK SIGNALBEHANDLING (DSP)
+   3.1 Polyfonisk FFT Analyse [REQ-ALG-201]
+   3.2 Monofonisk YIN Præcision [REQ-ALG-202]
+   3.3 Realtidsydelse og Latenstid [REQ-ALG-203]
+3. FIRMWARE ARKITEKTUR (FreeRTOS)
+   4.1 Dual-Core Task Management [REQ-SW-501]
+   4.2 Persistent Datalagring (NVS) [REQ-DAT-401]
+4. HARDWARE INTERFACE & ELEKTRISKE SPECIFIKATIONER
+   5.1 Analog Front-End (Maxim CMOS) [REQ-HW-506]
+   5.2 Lav-Ohmsk Buffered Thru-Udgang (Jack) [REQ-HW-507]
+   5.3 Beskyttelse og Clipping-detektion [REQ-HW-503]
+   5.4 Systemstabilitet og Watchdog [REQ-HW-504]
+5. TEST, DEBUG OG VALIDERING
+   6.1 Serial Debug Interface [REQ-TST-601]
+   6.2 Præcisionsvalidering [REQ-TST-602]
+   6.3 Validering af YIN-præcision [REQ-TST-603]
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+1. BRUGERGRÆNSEFLADE & NAVIGATION (UI/UX)
+------------------------------------------------------------------------------------------------------------------------------------------------------
+
+* [REQ-UI-101] HIERARKISK MENUSYSTEM:
+  Systemet skal implementere en logisk menustruktur i to niveauer for at sikre hurtig konfiguration under live-optræden:
+  - Niveau 1 (Kategori): Valg af instrumenttype (Guitar, 4-str. Bas, 5-str. Bas).
+  - Niveau 2 (Profil): Valg af specifikke stemninger (Standard, Drop D, DADGAD, Eb Standard).
+
+* [REQ-UI-102] ROTARY ENCODER INTERFACE:
+  Al interaktion i menuerne skal ske via en inkremental encoder med indbygget trykknap.
+  - Rotation: Scrolling gennem lister og parametre.
+  - Push: Bekræftelse af valg (Enter) samt manuelt skift mellem Mono/Poly visning i tuning-mode.
+
+* [REQ-UI-103] DYNAMISK OLED ADAPTATION:
+  Brugerfladen på SSD1306 OLED-displayet skal automatisk tilpasse sig det valgte instrument. Ved valg af 4-strenget bas skal systemet kun vise 4
+  frekvensindikatorer, mens 6-strenget guitar skal vise 6 indikatorer, alle centreret og optimeret for maksimal læsbarhed på mørke scener.
+
+* [REQ-UI-104] CENTS-SKALERING OG OVERFLOW-INDIKATOR:
+  Systemet skal grafisk repræsentere afvigelsen i pitch via en bjælke eller nål. Hvis afvigelsen overstiger +/- 50 cents, skal en visuel 
+  indikator ("overflow") tydeliggøre, at strengen er ekstremt ude af stemning.
+
+* [REQ-UI-105] STRENGENAVNE I STEDET FOR NUMRE:
+  Displayet skal vise den faktiske noderespons (f.eks. "E", "A", "D") baseret på den valgte profil, frem for blot "Streng 1", "Streng 2", for at 
+  reducere den kognitive belastning hos musikeren.
+
+* [REQ-UI-106] LOCKED-TÆRSKEL OG VISUEL BEKRÆFTELSE:
+  Når en streng har været inden for +/- 0.5 cents i mere end 200 ms, skal systemet visuelt indikere et "Lock" (f.eks. ved at midter-linjen 
+  skifter karakter/blinker), så brugeren ved, at strengen er perfekt stemt.
+
+* [REQ-UI-107] POLYFONISK MULTISTRENGSVISNING:
+  I polyfonisk mode skal alle strenge vises samtidigt som individuelle, vertikale søjler. Hver søjle repræsenterer én streng, og højden/
+  placeringen af søjlen indikerer om strengen er for skarp eller for flad.
+
+* [REQ-UI-108] STROBE-MODE TIL ULTRAHØJ PRÆCISION:
+  Systemet skal inkludere en simulering af en traditionel mekanisk strobe-tuner, hvor et roterende mønster står stille, når strengen er 
+  præcist stemt (0.1 cents nøjagtighed). Dette vælges i menuen under "Mode".
+------------------------------------------------------------------------------------------------------------------------------------------------------
+2. ALGORITMISK SIGNALBEHANDLING (DSP)
+------------------------------------------------------------------------------------------------------------------------------------------------------
+
+* [REQ-ALG-201] POLYFONISK FFT ANALYSE:
+  Systemet skal anvende en Radix-4 Fast Fourier Transform (FFT) algoritme til at adskille og identificere frekvenserne fra op til 6 strenge
+  samtidigt. Beregningen skal accelereres via esp-dsp biblioteket for at overholde latenstidskravene.
+
+* [REQ-ALG-202] MONOFONISK YIN PRÆCISION:
+  Til enkeltstrengs-stemning skal systemet benytte en forbedret YIN-algoritme (autokorrelation). Algoritmen skal inkludere tau-begrænsning og
+  parabolsk interpolation for at garantere en målenøjagtighed på ±0.1 cents.
+
+* [REQ-ALG-203] REALTIDSYDELSE OG LATENSTID:
+  Den samlede latenstid fra anslag på instrumentet til visuel opdatering på displayet må ikke overstige 50 millisekunder (ms) under nogen
+  omstændigheder, for at sikre en "real-time" oplevelse for musikeren.
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+3. FIRMWARE ARKITEKTUR (FreeRTOS)
+------------------------------------------------------------------------------------------------------------------------------------------------------
+
+* [REQ-SW-501] DUAL-CORE TASK MANAGEMENT:
+  Firmwaren skal bygge på FreeRTOS og udnytte ESP32's dual-core arkitektur:
+  - Core 0: Skal dedikeres 100% til DSP-opgaver (FFT, YIN, ADC-DMA interrupts).
+  - Core 1: Skal håndtere UI, I2C-kommunikation, NVS-lagring og systemtilstand (State Machine).
+
+* [REQ-DAT-401] PERSISTENT DATALAGRING (NVS):
+  Systemet skal gemme brugerens indstillinger (valgt instrument, stemningsprofil, mode) i ESP32's interne Non-Volatile Storage (NVS).
+  Derudover skal systemet understøtte lagring af minimum tre brugerdefinerede profiler ("cust_gtr", "cust_b4", "cust_b5").
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+4. HARDWARE INTERFACE & ELEKTRISKE SPECIFIKATIONER
+------------------------------------------------------------------------------------------------------------------------------------------------------
+
+* [REQ-HW-506] ANALOG FRONT-END (MAXIM CMOS):
+  Indgangstrinnet skal baseres på en Maxim Integrated Rail-to-Rail CMOS operationsforstærker for at sikre maksimalt dynamisk område ved 3.3V
+  single-supply drift, uden at kompromittere headroomet fra high-output pickupper. Indgangsimpedansen skal være minimum 1 MOhm.
+
+* [REQ-HW-507] LAV-OHMSK BUFFERED THRU-UDGANG (JACK):
+  Systemet skal inkludere en dedikeret, analog Thru-udgang (Jack). Signalet skal aftappes efter indgangsbufferen og føres til en separat 
+  operationsforstærker (konfigureret som spændingsfølger/buffer) for at give en lav-ohmsk udgang. Der skal indsættes en modstand til stel på 
+  denne buffers ikke-inverterende indgang for at sikre korrekt reference uden at belaste ADC-målekredsløbet. Udgangen skal DC-blokeres via en 
+  47uF elektrolytkondensator, før signalet sendes til udgangsjackstikket (tip/midten, med ring til stel). Dette sikrer, at det rene analoge signal 
+  kan sendes uforstyrret videre til andre pedaler eller forstærkere uden "tone-suck" (tab af frekvenser).
+
+* [REQ-HW-503] BESKYTTELSE OG CLIPPING-DETEKTION:
+  Hardwaren skal overvåge ADC-indgangen. Hvis signalet når de absolutte min/max værdier (0 eller 4095), skal systemet aktivere en visuel 
+  clipping-advarsel (Status LED) for at undgå forvrængede FFT-beregninger.
+
+* [REQ-HW-504] SYSTEMSTABILITET OG WATCHDOG:
+  Systemet skal inkludere en I2C Watchdog, der konstant overvåger kommunikationen med OLED-displayet. Ved udfald (f.eks. pga. EMI på scenen) 
+  skal displayet kunne geninitialiseres automatisk på under 10 ms uden at forstyrre DSP-kernen.
+
+* [REQ-PCB-700] PCB LAYOUT OG STØJISOLATION:
+  Printlayoutet skal minimere EMI/RFI støj:
+  - Skærmning: Systemet skal monteres i et ledende aluminiumskabinet (type 1590B).
+  - Grounding: Der skal anvendes et dedikeret analogt stelplan adskilt fra det digitale stelplan. De må kun forbindes i et enkelt stjernepunkt.
+------------------------------------------------------------------------------------------------------------------------------------------------------
+5. TEST, DEBUG OG VALIDERING
+------------------------------------------------------------------------------------------------------------------------------------------------------
+
+* [REQ-TST-601] SERIAL DEBUG INTERFACE:
+  Firmwaren skal indeholde en DEBUG-makro, der muliggør overvågning via USB/Serial (115200 baud).
+  - Output: Debug-strømmen skal kunne vise FFT-peakværdier, beregnet YIN-frekvens, tau-estimat, aktuelt streng-match og FSM-tilstand til
+    validering af målenøjagtighed.
+
+* [REQ-TST-602] PRÆCISIONSVALIDERING:
+  Hver enhed skal testes mod en kalibreret reference-tonegenerator. Systemet skal kunne detektere en 440.0 Hz tone (A4) med en afvigelse på
+  maksimalt ±0.1 cent i monofonisk tilstand.
+
+* [REQ-TST-603] VALIDERING AF YIN-PRÆCISION UNDER VARIERENDE FORHOLD:
+  Ved test skal YIN-algoritmen valideres med signalsweeps fra 30 Hz til 1000 Hz ved forskellige amplituder og med tilføjet harmonisk
+  forvrængning. Måleresultaterne skal logges via debug-interface for at verificere robusthed og overholdelse af ±0.1 cent.
+
+* [REQ-TST-604] HARDWARE VALIDERING AF THRU-UDGANG:
+  Den analoge Thru-udgang skal undergå separat hardware-validering under QA. Det skal verificeres med oscilloskop, at signalet på
+  udgangsjackstikket har unity-gain (1:1 i forhold til input) uden hørbar eller målbar forvrængning, og at DC-spændingen er fuldstændig 
+  blokeret af kondensatoren (0V DC offset målt på output).
+
+======================================================================================================================================================
+SLUT PÅ DOKUMENT SRS-ESP32-PT-400-2026-REV3 | GODKENDT AF: JAN ENGELBRECHT PEDERSEN
+======================================================================================================================================================
