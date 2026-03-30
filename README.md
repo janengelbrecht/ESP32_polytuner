@@ -67,6 +67,7 @@ Projektet er udviklet med en "Industrial Standard" tilgang, hvilket betyder, at 
 Dette projekt er omfattende dokumenteret i følgende filer (findes i `/docs` mappen):
 * **SRS-ESP32-PT-400-2026-REV3:** Kravspecifikation med alle funktionelle og elektriske krav.
 * **STD-ESP32-PT-400-2026-REV4:** Teknisk systemdokumentation inklusiv hardwareanalyse, algoritme-gennemgang og brugervejledning.
+* **Schematics og PCB layout** er under udarbejdelse i KiCAD.
 
 ## 👨‍💻 Forfatter
 
