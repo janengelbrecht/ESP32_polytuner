@@ -401,6 +401,121 @@ Nedenstående dokumenter udgør den samlede tekniske pakke for projektet:
 * TESTBILLEDER (Oscilloskop-målinger af AFE-signal, Thru-udgang og clipping-detektion)
 * DATABLADE (ESP32-WROOM-32, Maxim Integrated CMOS Dual Op-Amp, SSD1306)
 
+======================================================================================================================================================
+11. BILAG: SKÆRMBILLEDER
+======================================================================================================================================================
+1. Opstartsskærm (Startup Logo) [REQ-UI-101]
+Når strømmen tilsluttes, kører setup()-funktionen og kalder ui.showLogo(). Skærmen vises i 2 sekunder.
+
+Plaintext
++--------------------------------------------------------------+
+|                                                              |
+|                     ESP32 POLYTUNER                          |
+|                        v.4.0.0                               |
+|                                                              |
+|                  [ INDUSTRIAL GRADE ]                        |
+|                                                              |
+|        Initializing DSP and I2C Watchdog...                  |
++--------------------------------------------------------------+
+2. Hovedmenu: Valg af Instrument [REQ-UI-101]
+Efter opstart skifter systemet til STATE_MENU. Her bruges encoderen til at vælge instrumentkategori.
+
+Plaintext
++--------------------------------------------------------------+
+|  SELECT INSTRUMENT                                [ MENU ]   |
+|                                                              |
+|     > GUITAR (6-STRING)                                      |
+|       BASS   (4-STRING)                                      |
+|       BASS   (5-STRING)                                      |
+|                                                              |
+|  Rotate to scroll | Push to select                           |
++--------------------------------------------------------------+
+3. Undermenu: Valg af Profil [REQ-UI-101]
+Når instrumentet er valgt (f.eks. Guitar), vælges den specifikke stemning.
+
+Plaintext
++--------------------------------------------------------------+
+|  GUITAR PROFILES                                  [ MENU ]   |
+|                                                              |
+|     > STANDARD E (E-A-D-G-B-e)                               |
+|       DROP D     (D-A-D-G-B-e)                               |
+|       DADGAD     (D-A-D-G-A-d)                               |
+|       CUSTOM 1   (User Defined)                              |
++--------------------------------------------------------------+
+4. Polyfonisk Tuning (Multistrengs-visning) [REQ-UI-107]
+Når alle strenge anslås samtidigt. Her vises 6 vertikale søjler for guitar.
+
+Plaintext
++--------------------------------------------------------------+
+|  GUITAR - POLY MODE                          STANDARD E      |
+|                                                              |
+|          |               |       #       |               |   |
+|  |       |       |       |       |       |       |       |   |
+|--|-------|-------|-------|-------|-------|-------|-------|---|
+|  |       |       |       |       |       |       |       |   |
+|          b               |               |       b           |
+|                                                              |
+|    E2      A2      D3      G3      B3      E4                |
++--------------------------------------------------------------+
+5. Monofonisk Tuning (Enkeltstrengs-visning) [REQ-UI-104/105]
+Når kun én streng anslås. Systemet skifter automatisk og bruger YIN-algoritmen for høj præcision.
+
+Plaintext
++--------------------------------------------------------------+
+|  GUITAR - MONO                                  [ ACTIVE ]   |
+|                                                              |
+|            -50      -25       0      +25      +50            |
+|             |--------|--------|--------|--------|            |
+|                               ^                              |
+|                               |                              |
+|                         +-----------+                        |
+|                         |     A2    |                        |
+|                         +-----------+                        |
+|                                                              |
+|  LOCKED: +/- 0.1 Cents                         440.01 Hz     |
++--------------------------------------------------------------+
+6. Strobe Mode (Ultrahøj præcision) [REQ-UI-108]
+Aktiveres via menuen for professionel intonering.
+
+Plaintext
++--------------------------------------------------------------+
+|  GUITAR - STROBE                                [ ACTIVE ]   |
+|                                                              |
+|    <<<<<<<<<<<<<<<<<< [  E2  ] >>>>>>>>>>>>>>>>>>            |
+|                                                              |
+|   (Båndet roterer hurtigt mod venstre ved flad tone)         |
+|   (Båndet roterer hurtigt mod højre ved skarp tone)          |
+|   (Båndet står HELT stille ved perfekt pitch)                |
+|                                                              |
+|  PRECISION: 0.1 Cents                         82.41 Hz       |
++--------------------------------------------------------------+
+7. Systemadvarsler (Overlays) [REQ-HW-503]
+Disse kan poppe op uanset hvilken mode man er i.
+
+Clipping-advarsel:
+
+Plaintext
++--------------------------------------------------------------+
+|                                                              |
+|   !!!!!!!!!!!!!!!!!!  SIGNAL LIMIT  !!!!!!!!!!!!!!!!!!       |
+|                                                              |
+|      INPUT SIGNAL TOO HOT - PLEASE REDUCE VOLUME             |
+|                                                              |
++--------------------------------------------------------------+
+Lavt batteri:
+
+Plaintext
++--------------------------------------------------------------+
+|                                                              |
+|   [!] WARNING: LOW BATTERY (< 7.0V)                          |
+|                                                              |
+|      PLEASE CONNECT EXTERNAL POWER SUPPLY                    |
+|                                                              |
++--------------------------------------------------------------+
+Hvert skærmbillede er designet til at udnytte SSD1306 OLED'ens høje kontrast, 
+så hvid tekst på sort baggrund står knivskarpt, hvilket er afgørende for læsbarheden jf. dine krav i [REQ-UI-103].
+======================================================================================================================================================
+
 BEMÆRKNINGER:
 ______________________________________________________________________________________________________________________________________________________
 
