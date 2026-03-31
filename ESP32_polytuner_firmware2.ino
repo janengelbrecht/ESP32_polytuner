@@ -100,6 +100,7 @@
 //----------------------------------------------------------------------------------------------------------------------------------------------------
 // KONSTANTER: HARDWARE DEFINITIONER [REQ-HW-505]
 //----------------------------------------------------------------------------------------------------------------------------------------------------
+// Formål: Definerer hardwarepin-tildelinger for at sikre korrekt tilslutning og undgå konflikter med radio. Krav: [REQ-HW-505]
 #define ADC_PIN          36               // Definerer GPIO 36 som analog indgang; bruger ADC1 for at undgå støj fra WiFi radioen. [REQ-HW-505]
 #define FOOTSWITCH_PIN   14               // Definerer GPIO 14 som fodkontakt; kører med INPUT_PULLUP for at detektere logisk nul ved tryk. [REQ-HW-501]
 #define ENCODER_CLK      25               // Definerer GPIO 25 som encoderens clock-fase; trigger interrupt ved rotation. [REQ-UI-102]
@@ -111,6 +112,7 @@
 //----------------------------------------------------------------------------------------------------------------------------------------------------
 // KONSTANTER: SYSTEM PARAMETRE
 //----------------------------------------------------------------------------------------------------------------------------------------------------
+// Formål: Indstillinger for sampling, FFT, filtre og brugerflade. Krav: [REQ-UI-103], [REQ-TEC-303], [REQ-ALG-201], [REQ-ALG-208]
 #define SCREEN_WIDTH     128              // Definerer OLED skærmens bredde i pixels; fastsat til 128 for SSD1306. [REQ-UI-103]
 #define SCREEN_HEIGHT    64               // Definerer OLED skærmens højde i pixels; fastsat til 64 for SSD1306. [REQ-UI-103]
 #define OLED_RESET       -1               // Definerer reset pin som -1; angiver at der ikke bruges en dedikeret reset pin. [REQ-HW-504]
@@ -138,14 +140,17 @@
 //----------------------------------------------------------------------------------------------------------------------------------------------------
 // SYSTEM ENUMS OG STRUKTURER
 //----------------------------------------------------------------------------------------------------------------------------------------------------
+// Formål: Definerer systemets tilstande, instrumenttyper, tilstande og menu-niveauer. Krav: [REQ-UI-101], [REQ-UI-108], [REQ-UI-109]
 enum SystemState { STATE_STARTUP, STATE_MENU, STATE_TUNING, STATE_ERROR };   // Definerer systemets fire tilstande: opstart, menu, tuning, fejl. [REQ-UI-101]
 enum InstrumentType { INST_GUITAR = 0, INST_BASS_4 = 1, INST_BASS_5 = 2 };    // Definerer understøttede instrumenttyper med numeriske værdier. [REQ-UI-101]
 enum TuningMode { MODE_AUTO = 0, MODE_MONO = 1, MODE_POLY = 2, MODE_STROBE = 3 }; // Detektionstilstande: auto, mono, poly, strobe [REQ-UI-108]. [REQ-UI-108]
 
 // Menu-niveauer for UI [NY FUNKTION]
+// Formål: Definerer hierarkiske niveauer i menuen. Krav: [REQ-UI-101]
 enum MenuLevel { MENU_INSTRUMENT = 1, MENU_TUNING_PROFILE = 2, MENU_SETTINGS = 3,
                  MENU_CLIP_THRESH = 4, MENU_CUSTOM_EDIT = 5, MENU_CUSTOM_FREQ = 6 }; // Niveauer i menuhierarkiet. [REQ-UI-101]
 
+// Formål: Struktur til at holde en stemningsprofil (navn, antal strenge, frekvenser). Krav: [REQ-UI-109]
 struct TuningProfile {
     const char* name;           // Navn på stemningen (vises i menu). [REQ-UI-109]
     uint8_t numStrings;         // Antal strenge for dette instrument (4, 5 eller 6). [REQ-UI-103]
@@ -155,14 +160,17 @@ struct TuningProfile {
 //----------------------------------------------------------------------------------------------------------------------------------------------------
 // KONSTANTER: STEMMINGSPROFILER (UDVIDET) [REQ-UI-109] + brugerdefinerede profiler [NY FUNKTION]
 //----------------------------------------------------------------------------------------------------------------------------------------------------
+// Formål: Prædefinerede stemningsprofiler til guitar og bas. Krav: [REQ-UI-109]
 // Guitar profiler: Standard, Drop D, DADGAD, Eb Standard, Drop C, Open G
 const TuningProfile guitarProfiles[] = {
     {"Standard", 6, {82.41f, 110.00f, 146.83f, 196.00f, 246.94f, 329.63f}},   // Standard guitarstemning E2-A2-D3-G3-B3-E4 [REQ-UI-109]
     {"Drop D",   6, {73.42f, 110.00f, 146.83f, 196.00f, 246.94f, 329.63f}},   // Drop D: lav E sænket til D (73,42 Hz) [REQ-UI-109]
-    {"DADGAD",   6, {73.42f, 110.00f, 146.83f, 196.00f, 246.94f, 329.63f}},   // DADGAD: D-A-D-G-A-D (forenklet, bruger samme frekvenser som placeholder) [REQ-UI-109]
+    // DADGAD = D2-A2-D3-G3-A3-D4 (korrigeret) [REQ-UI-109]
+    {"DADGAD",   6, {73.42f, 110.00f, 146.83f, 196.00f, 220.00f, 293.66f}},   // DADGAD: D2-A2-D3-G3-A3-D4 [REQ-UI-109]
     {"Eb Standard",6, {77.78f, 103.83f, 138.59f, 185.00f, 233.08f, 311.13f}},  // Eb Standard: alle strenge sænket en halv tone [REQ-UI-109]
     {"Drop C",   6, {65.41f, 103.83f, 138.59f, 185.00f, 233.08f, 311.13f}},   // Drop C: Drop D sænket yderligere en hel tone [REQ-UI-109]
-    {"Open G",   6, {98.00f, 110.00f, 146.83f, 196.00f, 246.94f, 329.63f}}    // Open G: D-G-D-G-B-D (forenklet) [REQ-UI-109]
+    // Open G = D2-G2-D3-G3-B3-D4 (korrigeret) [REQ-UI-109]
+    {"Open G",   6, {73.42f, 98.00f, 146.83f, 196.00f, 246.94f, 293.66f}}     // Open G: D2-G2-D3-G3-B3-D4 [REQ-UI-109]
 };
 const int guitarProfileCount = sizeof(guitarProfiles) / sizeof(TuningProfile);  // Beregner antal guitarprofiler automatisk [REQ-UI-109]
 
@@ -183,16 +191,19 @@ const TuningProfile bass5Profiles[] = {
 const int bass5ProfileCount = sizeof(bass5Profiles) / sizeof(TuningProfile);   // Beregner antal 5-strengs basprofiler [REQ-UI-109]
 
 // Brugerdefinerede profiler (initialiseres med standard, indlæses fra NVS) [NY FUNKTION]
+// Formål: Holder brugerens egne stemningsprofiler. Krav: [REQ-DAT-401]
 TuningProfile customGuitarProfile = {"Custom", 6, {82.41f, 110.00f, 146.83f, 196.00f, 246.94f, 329.63f}}; // Brugerdefineret guitarprofil [REQ-DAT-401]
 TuningProfile customBass4Profile = {"Custom", 4, {41.20f, 55.00f, 73.42f, 98.00f, 0, 0}};               // Brugerdefineret 4-strengs basprofil [REQ-DAT-401]
 TuningProfile customBass5Profile = {"Custom", 5, {30.87f, 41.20f, 55.00f, 73.42f, 98.00f, 0}};           // Brugerdefineret 5-strengs basprofil [REQ-DAT-401]
 
 // Strengenavne til visning [REQ-UI-105]
+// Formål: Navne til visning af strenge på skærmen. Krav: [REQ-UI-105]
 const char* guitarStringNames[6] = {"E2", "A2", "D3", "G3", "B3", "E4"};      // Navne for 6-strenget guitar [REQ-UI-105]
 const char* bass4StringNames[4] = {"E1", "A1", "D2", "G2"};                   // Navne for 4-strenget bas [REQ-UI-105]
 const char* bass5StringNames[5] = {"B0", "E1", "A1", "D2", "G2"};             // Navne for 5-strenget bas [REQ-UI-105]
 
 // Struktur til at sende data fra DSP-task til UI-task
+// Formål: Indkapsler alle tuning-relevante data til overførsel mellem tasks. Krav: [REQ-ALG-210], [REQ-UI-104], [REQ-UI-106], [REQ-UI-107]
 struct TuningData {
     int stringIndex;            // Index for den streng, der er matchet (mono mode). [REQ-ALG-210]
     float cents;                // Cent-afvigelse (mono mode). [REQ-UI-104]
@@ -207,10 +218,12 @@ struct TuningData {
 //----------------------------------------------------------------------------------------------------------------------------------------------------
 // GLOBALE BUFFERE (allokeres dynamisk i setup)
 //----------------------------------------------------------------------------------------------------------------------------------------------------
+// Formål: Heap-allokerede arbejdsbuffere til signalbehandling. Krav: [REQ-ALG-201], [REQ-ALG-202], [REQ-TEC-301]
 double* vReal = nullptr;                 // Pointer til heap-allokeret array til reelle FFT-data. [REQ-ALG-201]
 double* vImag = nullptr;                 // Pointer til heap-allokeret array til imaginære FFT-data. [REQ-ALG-201]
 double* yin_buffer = nullptr;            // Pointer til heap-allokeret array til YIN-buffer. [REQ-ALG-202]
 int16_t* i2s_raw_samples = nullptr;      // Pointer til heap-allokeret array til I2S rå samples. [REQ-TEC-301]
+double* vRaw = nullptr;                  // Pointer til heap-allokeret array til rå DC-fjernet data til YIN (ikke windowed) [REQ-ALG-202]
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------
 // ISOLERET ISR-DATA (RETTELSE FOR RELOCATION ERROR) - Bruges nu kun til at signalere til køer
@@ -221,6 +234,7 @@ QueueHandle_t buttonQueue;       // Deklarerer kø-håndtag til knap-tryk; sende
 QueueHandle_t tuningDataQueue;   // Deklarerer kø-håndtag til at sende TuningData fra DSP-task til UI-task. [REQ-SW-501]
 
 // IRAM-interrupt funktioner, der nu sender data til køer i stedet for at opdatere volatile variable
+// Formål: ISR for encoder-rotation, sender delta til kø. Påvirker: encoderQueue. Krav: [REQ-UI-102], [REQ-SW-502]
 void IRAM_ATTR isr_encoder_rotation() {    // Interrupt service routine for encoder rotation; kaldes ved ændring på CLK pin. [REQ-UI-102]
     // Læs DT pin for at bestemme retning: Hvis DT er HIGH, roterer vi med uret, ellers mod uret [REQ-UI-102]
     int delta = (digitalRead(ENCODER_DT) == HIGH) ? 1 : -1;   // Bestemmer delta: +1 for med uret, -1 for mod uret. [REQ-UI-102]
@@ -228,6 +242,7 @@ void IRAM_ATTR isr_encoder_rotation() {    // Interrupt service routine for enco
     xQueueSendFromISR(encoderQueue, &delta, NULL);            // Sender delta-værdien til encoder-køen fra interrupt-kontekst. [REQ-SW-502]
 }
 
+// Formål: ISR for knap-tryk, sender dummy til buttonQueue. Påvirker: buttonQueue. Krav: [REQ-UI-102], [REQ-SW-502]
 void IRAM_ATTR isr_button_press() {        // Interrupt service routine for knap-tryk; kaldes ved faldende kant på ENCODER_SW. [REQ-UI-102]
     // Send en dummy-værdi (f.eks. 1) til buttonQueue [REQ-SW-502]
     int dummy = 1;                         // Opretter en dummy-værdi (1) som signal for knap-tryk. [REQ-SW-502]
@@ -235,6 +250,7 @@ void IRAM_ATTR isr_button_press() {        // Interrupt service routine for knap
 }
 
 // ISR for fodkontakt [REQ-HW-501] – tilføjet
+// Formål: ISR for fodkontakt, sender dummy til buttonQueue. Påvirker: buttonQueue. Krav: [REQ-HW-501], [REQ-SW-502]
 void IRAM_ATTR isr_footswitch() {          // Interrupt service routine for fodkontakt; kaldes ved faldende kant på FOOTSWITCH_PIN. [REQ-HW-501]
     int dummy = 2;                         // Dummy-værdi til at signalere fodkontakt-tryk (f.eks. 2). [REQ-HW-501]
     xQueueSendFromISR(buttonQueue, &dummy, NULL); // Sender til knap-køen; UI-task kan håndtere skift af profil/mute. [REQ-SW-502]
@@ -292,6 +308,7 @@ public:
     bool strobeModeEnabled;                // Flag der angiver om strobe-mode er aktiveret. [REQ-UI-108]
 
     /* * KONSTRUKTØR: Initialiserer klassen med sikre startværdier. */
+    // Formål: Initialiserer alle medlemmer til sikre startværdier. Påvirker: Alle private/public medlemmer. Krav: [REQ-UI-101], [REQ-UI-108], [REQ-HW-508]
     SystemController() : menuLevel(1), menuSelection(0), lastLedUpdate(0), ledBlinkMode(1), ledState(true),
                          lastBatteryCheck(0), batteryVoltage(9.0f), lastI2CCheck(0), i2cErrorCount(0),
                          currentState(STATE_STARTUP), currentInst(INST_GUITAR), currentTuningId(0), currentMode(MODE_AUTO),
@@ -348,34 +365,48 @@ public:
      * Krav: [REQ-DAT-401], [NY FUNKTION]
      */
     void loadCustomProfiles() {
-        // Guitarprofil: læs 6 float-værdier, brug standard hvis ikke fundet
-        if (preferences.isKey("cust_gtr")) {
-            Preferences prefs_cust;
-            prefs_cust.begin("cust_gtr", false);
-            for (int i = 0; i < 6; i++) {
-                customGuitar.frequencies[i] = prefs_cust.getFloat(("f"+String(i)).c_str(), customGuitar.frequencies[i]);
+        // Guitar: åbn namespace og tjek om der er gemt data
+        {
+            Preferences p;
+            p.begin("cust_gtr", true); // read-only
+            float f0 = p.getFloat("f0", -1.0f);
+            if (f0 > 0.0f) {
+                for (int i = 0; i < 6; i++) {
+                    customGuitar.frequencies[i] = p.getFloat(("f" + String(i)).c_str(),
+                                                              customGuitar.frequencies[i]);
+                }
+                DEBUG_PRINT("Custom guitar profil indlæst\n");
             }
-            prefs_cust.end();
+            p.end();
         }
         // 4-strengs basprofil
-        if (preferences.isKey("cust_b4")) {
-            Preferences prefs_cust;
-            prefs_cust.begin("cust_b4", false);
-            for (int i = 0; i < 4; i++) {
-                customBass4.frequencies[i] = prefs_cust.getFloat(("f"+String(i)).c_str(), customBass4.frequencies[i]);
+        {
+            Preferences p;
+            p.begin("cust_b4", true);
+            float f0 = p.getFloat("f0", -1.0f);
+            if (f0 > 0.0f) {
+                for (int i = 0; i < 4; i++) {
+                    customBass4.frequencies[i] = p.getFloat(("f" + String(i)).c_str(),
+                                                             customBass4.frequencies[i]);
+                }
+                DEBUG_PRINT("Custom bass4 profil indlæst\n");
             }
-            prefs_cust.end();
+            p.end();
         }
         // 5-strengs basprofil
-        if (preferences.isKey("cust_b5")) {
-            Preferences prefs_cust;
-            prefs_cust.begin("cust_b5", false);
-            for (int i = 0; i < 5; i++) {
-                customBass5.frequencies[i] = prefs_cust.getFloat(("f"+String(i)).c_str(), customBass5.frequencies[i]);
+        {
+            Preferences p;
+            p.begin("cust_b5", true);
+            float f0 = p.getFloat("f0", -1.0f);
+            if (f0 > 0.0f) {
+                for (int i = 0; i < 5; i++) {
+                    customBass5.frequencies[i] = p.getFloat(("f" + String(i)).c_str(),
+                                                             customBass5.frequencies[i]);
+                }
+                DEBUG_PRINT("Custom bass5 profil indlæst\n");
             }
-            prefs_cust.end();
+            p.end();
         }
-        DEBUG_PRINT("Brugerdefinerede profiler indlæst\n");
     }
 
     /* * saveCustomProfile(): Gemmer en brugerdefineret profil for det angivne instrument.
@@ -526,7 +557,7 @@ public:
         if (ledBlinkMode == 1) digitalWrite(STATUS_LED, HIGH);                       // Konstant lys. [REQ-HW-502]
         else if (ledBlinkMode == 2) {                                                // Langsomt blink (1 Hz). [REQ-HW-502]
             if (currentMillis - lastLedUpdate >= 500) { lastLedUpdate = currentMillis; ledState = !ledState; digitalWrite(STATUS_LED, ledState); }
-        } else if (ledBlinkMode == 3) {                                              // Hurtigt blink (5 Hz). [REQ-HW-502)
+        } else if (ledBlinkMode == 3) {   // Hurtigt blink (5 Hz). [REQ-HW-502]
             if (currentMillis - lastLedUpdate >= 100) { lastLedUpdate = currentMillis; ledState = !ledState; digitalWrite(STATUS_LED, ledState); }
         } else digitalWrite(STATUS_LED, LOW);                                        // Slukket. [REQ-HW-502]
     }
@@ -541,8 +572,10 @@ public:
         if (now - lastBatteryCheck >= BATTERY_CHECK_MS) {
             lastBatteryCheck = now;
             uint32_t adc_raw = analogRead(BATTERY_ADC);
-            float voltage = (3.3f / 4095.0f) * adc_raw * 3.6f;                       // Beregner spænding ud fra spændingsdeler. [REQ-HW-510]
-            batteryVoltage = voltage;
+            // Brug kalibreret konvertering
+            uint32_t mv = esp_adc_cal_raw_to_voltage(adc_raw, &adc_chars);
+            // Spændingsdeler: antager R1=200k, R2=100k → faktor 3.0 (justér til din faktiske deler)
+            batteryVoltage = (mv / 1000.0f) * 3.0f;
         }
     }
 
@@ -558,15 +591,23 @@ public:
         unsigned long now = millis();
         if (now - lastI2CCheck >= I2C_WATCHDOG_MS) {
             lastI2CCheck = now;
-            Wire.begin();                                                            // Genstarter I2C-bus. [REQ-HW-504]
-            display->begin(SSD1306_SWITCHCAPVCC, I2C_ADDRESS);                       // Forsøger at geninitialisere display. [REQ-HW-504]
-            if (display->width() == 0) {                                             // Hvis displayet ikke svarer (bredde 0 indikerer fejl). [REQ-HW-504]
-                i2cErrorCount++;                                                     // Tæller fejl. [REQ-HW-504]
-                if (i2cErrorCount >= 3) currentState = STATE_ERROR;                 // Ved 3 fejl, gå i fejltilstand. [REQ-HW-504]
+            // Test kommunikation uden at sende init-sekvens
+            Wire.beginTransmission(I2C_ADDRESS);
+            uint8_t err = Wire.endTransmission();
+            if (err != 0) {
+                i2cErrorCount++;
+                DEBUG_PRINT("I2C fejl #%d (kode %d)\n", i2cErrorCount, err);
+                if (i2cErrorCount >= 3) {
+                    currentState = STATE_ERROR;
+                } else {
+                    // Forsøg geninitialisering kun ved fejl
+                    Wire.begin();
+                    display->begin(SSD1306_SWITCHCAPVCC, I2C_ADDRESS);
+                    display->clearDisplay();
+                    display->display();
+                }
             } else {
-                i2cErrorCount = 0;                                                   // Nulstil fejltæller. [REQ-HW-504]
-                display->clearDisplay();                                             // Ryd display. [REQ-HW-504]
-                display->display();                                                  // Opdater display. [REQ-HW-504]
+                i2cErrorCount = 0; // Nulstil ved succesfuld ping
             }
         }
     }
@@ -664,14 +705,15 @@ private:
 
 public:
     /* * KONSTRUKTØR: Initialiserer AudioSampler med samplingrate og bufferstørrelse.
-     * Parametre: rate - samplingshastighed i Hz, size - antal samples pr. DMA-blok.
+     * Formål: Gemmer de angivne parametre til senere brug under initialisering.
+     * Påvirker: sampleRate, bufferSize.
+     * Krav: [REQ-TEC-301], [REQ-TEC-303]
      */
-    AudioSampler(int rate, int size) : sampleRate(rate), bufferSize(size) {}          // Konstruktør: gemmer sample rate og buffer størrelse.
+    AudioSampler(int rate, int size) : sampleRate(rate), bufferSize(size) {}          // Konstruktør: gemmer sample rate og buffer størrelse. [REQ-TEC-301]
 
     /* * begin(): Konfigurerer I2S-driveren i ADC-tilstand og aktiverer DMA.
      * Formål: Initialiserer hardwaren til kontinuerlig sampling.
      * Påvirker: I2S-hardware, ADC1 kanal 0.
-     * Returnerer: Ingen.
      * Krav: [REQ-TEC-301]
      */
     void begin() {
@@ -696,7 +738,6 @@ public:
     /* * read(): Læser samples via DMA, konverterer til double og tjekker clipping med noise-gate [REQ-HW-509].
      * Formål: Indsamler et antal samples fra I2S-bussen og lagrer dem i vRealArray.
      * Påvirker: vRealArray (uddata), opdaterer sys.setLEDBlinkMode ved clipping.
-     * Parametre: vRealArray - destination array, samplesToRead - antal samples, sys - reference til systemcontroller.
      * Krav: [REQ-HW-507], [REQ-HW-508], [REQ-HW-509]
      */
     void read(double* vRealArray, int samplesToRead, SystemController& sys) {
@@ -742,13 +783,12 @@ private:
     int sampleRate;                                                                   // Systemets samplingshastighed. [REQ-TEC-303]
     int fftSize;                                                                      // Aktuel FFT-størrelse (1024/8192). [REQ-ALG-201]
     float* fftMagnitudes;                                                             // Heap-allokeret array til magnituder. [REQ-ALG-206]
+    float* fft_data;                                                                  // Pre-allokeret FFT-arbejdsbuffer (interleaved real/imag) [REQ-ALG-207]
+    int fft_data_size;                                                                // Størrelse på fft_data i antal floats [REQ-ALG-207]
 
     /* * interpolatePeak(): Parabolsk interpolation omkring et peak for sub-bin præcision [REQ-ALG-209].
      * Formål: Forbedrer frekvensnøjagtigheden ved at estimere peakets sande position mellem FFT-bins.
-     * Parametre: magPrev, magCurr, magNext - magnituder af de tre bins omkring peaket.
-     *            index - bin-index for peaket (den midterste bin).
-     *            binWidth - frekvens pr. bin i Hz.
-     * Returnerer: Interpoleret frekvens i Hz.
+     * Påvirker: Ingen (ren beregning).
      * Krav: [REQ-ALG-209]
      */
     float interpolatePeak(float magPrev, float magCurr, float magNext, int index, float binWidth) {
@@ -762,14 +802,15 @@ private:
 
 public:
     /* * KONSTRUKTØR: Gemmer samplingshastighed.
-     * Parametre: sRate - samplingshastighed i Hz.
+     * Formål: Initialiserer DSPProcessor med angivet sample rate.
+     * Påvirker: sampleRate.
+     * Krav: [REQ-TEC-303]
      */
-    DSPProcessor(int sRate) : sampleRate(sRate), fftMagnitudes(nullptr) {}            // Konstruktør: gemmer samplingshastighed. [REQ-TEC-303]
+    DSPProcessor(int sRate) : sampleRate(sRate), fftMagnitudes(nullptr), fft_data(nullptr), fft_data_size(0) {} // Konstruktør: gemmer samplingshastighed. [REQ-TEC-303]
 
     /* * begin(): Sætter pointere til de reelle og imaginære arrays, allokerer magnitude-buffer (evt. i PSRAM).
-     * Parametre: realArray, imagArray - pointere til heap-allokerede arrays.
-     *            maxFFTSize - maksimal FFT-størrelse (til allokering af magnitude-buffer).
-     *            sys - reference til systemcontroller (for PSRAM-allokering).
+     * Formål: Allokerer nødvendige buffere og gemmer pointere til signaldata.
+     * Påvirker: vRealPtr, vImagPtr, fftMagnitudes, fft_data, fft_data_size.
      * Krav: [REQ-SW-505]
      */
     void begin(double* realArray, double* imagArray, int maxFFTSize, SystemController& sys) {
@@ -780,9 +821,17 @@ public:
             DEBUG_PRINT("Kunne ikke allokere fftMagnitudes\n");
             return;
         }
+        // Pre-allokér FFT-arbejdsbuffer én gang [REQ-ALG-207]
+        fft_data_size = maxFFTSize * 2;
+        fft_data = (float*)sys.allocateInPSRAM(fft_data_size * sizeof(float));
+        if (fft_data == nullptr) {
+            DEBUG_PRINT("Kunne ikke allokere FFT-arbejdsbuffer\n");
+            return;
+        }
     }
 
     /* * applyDCFilterAndWindow(): Fjerner DC-offset og anvender Hann-vindue.
+     * Formål: Forbereder signalet til FFT ved at fjerne jævnspænding og reducere sidelober.
      * Påvirker: vRealPtr (ændres in-place), vImagPtr nulstilles.
      * Krav: [REQ-ALG-201]
      */
@@ -799,17 +848,18 @@ public:
     }
 
     /* * runFFTAndFindPeaks(): Udfører FFT vha. esp-dsp og returnerer op til N dominante frekvenser med interpolation.
+     * Formål: Udfører FFT, beregner magnituder, finder peaks og interpolerer.
+     * Påvirker: fftMagnitudes, peakFreqs, peakMags.
      * Returnerer: Antal fundne peaks.
      * Krav: [REQ-ALG-201], [REQ-ALG-206], [REQ-ALG-207], [REQ-ALG-209]
      */
     int runFFTAndFindPeaks(int bufferSize, float* peakFreqs, float* peakMags, int maxPeaks) {
         fftSize = bufferSize;
-        // ESP-DSP FFT arbejder på interleaved real/imag data. Alloker ét array til begge. [REQ-ALG-207]
-        float* fft_data = new float[fftSize * 2];                                      // Interleaved array: [real0, imag0, real1, imag1, ...] [REQ-ALG-207]
-        if (!fft_data) {
-            DEBUG_PRINT("Kunne ikke allokere FFT-array\n");
+        if (!fft_data || bufferSize * 2 > fft_data_size) {
+            DEBUG_PRINT("FFT-buffer for lille\n");
             return 0;
         }
+        // Brug pre-allokeret fft_data (ingen new/delete i loop) [REQ-ALG-207]
         for (int i = 0; i < fftSize; i++) {
             fft_data[i * 2] = (float)vRealPtr[i];                                     // Real del på lige indeks. [REQ-ALG-207]
             fft_data[i * 2 + 1] = 0.0f;                                               // Imaginær del = 0. [REQ-ALG-207]
@@ -850,11 +900,9 @@ public:
             }
         }
 
-        delete[] fft_data;
         return peakCount;
     }
 };
-
 //----------------------------------------------------------------------------------------------------------------------------------------------------
 // KLASSE: YINProcessor [SRS 4.4] – Opdateret med tau-begrænsning, interpolation, adaptiv threshold, moving average OG båndpasfilter [REQ-ALG-205]
 // FORMÅL: Implementerer YIN-algoritmen til monofonisk pitch-detektion med ekstrem høj præcision (ned til 0.1 cents).
@@ -878,6 +926,7 @@ private:
 
     /* * parabolicInterpolation(): Parabolsk interpolation omkring det fundne tau for sub-sample præcision.
      * Formål: Forbedrer tau-estimatet til sub-sample præcision.
+     * Påvirker: Ingen (ren beregning).
      * Returnerer: Interpoleret tau-værdi.
      * Krav: [REQ-ALG-204]
      */
@@ -892,7 +941,11 @@ private:
         return (float)(tauEstimate + offset);                                         // Returnerer interpoleret tau. [REQ-ALG-204]
     }
 
-    /* * applyBandpassFilter(): Anvender båndpasfilter på data (in-place) [REQ-ALG-205]. */
+    /* * applyBandpassFilter(): Anvender båndpasfilter på data (in-place) [REQ-ALG-205].
+     * Formål: Fjerner frekvenser uden for det musikalsk relevante område (20-1000 Hz).
+     * Påvirker: data-arrayet (in-place modifikation).
+     * Krav: [REQ-ALG-205]
+     */
     void applyBandpassFilter(double* data, int size) {
         for (int i = 0; i < size; i++) {
             float x = (float)data[i];                                                // Konverterer til float. [REQ-ALG-205]
@@ -905,7 +958,8 @@ private:
 
 public:
     /* * KONSTRUKTØR: Initialiserer YIN-motoren med en følsomhedstærskel, adaptiv faktor og båndpasfilter.
-     * Parametre: thresh - grundtærskel, adapt - adaptiv faktor, avgWindow - moving average vinduesstørrelse.
+     * Formål: Sætter filterkoefficienter og allokerer ringbuffer til moving average.
+     * Påvirker: threshold, adaptiveFactor, movingAvgWindow, centsHistory, filterkoefficienter.
      * Krav: [REQ-ALG-202], [REQ-ALG-205]
      */
     YINProcessor(float thresh = 0.15, float adapt = 0.5, int avgWindow = 5) :
@@ -924,8 +978,6 @@ public:
         float fs = 20000.0f;
         float fL = 20.0f;
         float fH = 1000.0f;
-        float wL = 2.0f * M_PI * fL / fs;
-        float wH = 2.0f * M_PI * fH / fs;
         // Simpel IIR design: benytter pre-warped bilinear transformation for stabilitet.
         // For enkelhed bruger vi et standard 2. ordens båndpas med koefficienter fra en kendt design.
         // Disse koefficienter er beregnet ved hjælp af en filterdesignværktøj og er tilpasset 20-1000 Hz.
@@ -941,6 +993,8 @@ public:
     /* * getPitch(): Hoved-algoritmen der finder den fundamentale frekvens i et lydsignal.
      * Processen kører gennem båndpasfilter, Difference, Cumulative Mean Normalized Difference,
      * Absolute Threshold, Fallback, interpolation og moving average.
+     * Formål: Beregner den præcise frekvens af det dominerende tonehøjde.
+     * Påvirker: yin_buffer, outCents (reference parameter).
      * Returnerer: Frekvens i Hz, eller -1 hvis ingen troværdig tone fundet.
      * Krav: [REQ-ALG-202], [REQ-ALG-204], [REQ-ALG-205]
      */
@@ -1007,6 +1061,7 @@ public:
 
     /* * applyMovingAverage(): Anvender moving average filter på cents-værdi.
      * Formål: Reducerer jitter i cents-visning.
+     * Påvirker: centsHistory, lastCents.
      * Returnerer: Filtreret cents-værdi.
      * Krav: [REQ-ALG-205]
      */
@@ -1042,12 +1097,15 @@ private:
 
 public:
     /* * KONSTRUKTØR: Modtager pointer til display-objektet og initialiserer strobe-variabler.
-     * Parametre: d - pointer til Adafruit_SSD1306 objekt.
+     * Formål: Gemmer display-pointer og initialiserer strobe-tilstande.
+     * Påvirker: display, lastStrobePhase, lastStrobeUpdate.
+     * Krav: [REQ-UI-103], [REQ-UI-108]
      */
     OLEDUI(Adafruit_SSD1306* d) : display(d), lastStrobePhase(0), lastStrobeUpdate(0) {}
 
     /* * showLogo(): Viser opstartsskærm med softwareversion.
      * Formål: Giver visuel feedback under boot.
+     * Påvirker: Display (clear, text, cursor).
      * Krav: [REQ-UI-101]
      */
     void showLogo() {
@@ -1064,7 +1122,7 @@ public:
 
     /* * showError(): Viser fejlmeddelelse på displayet.
      * Formål: Informerer brugeren om kritisk fejl.
-     * Parametre: msg - fejltekst.
+     * Påvirker: Display (clear, text, cursor).
      * Krav: [REQ-SW-504]
      */
     void showError(const char* msg) {
@@ -1077,9 +1135,8 @@ public:
 
     /* * drawMenu(): Tegner det interaktive menusystem baseret på brugerens input.
      * Understøtter nu instrumentvalg, profilvalg, settings-menu, clipping‑tærskel‑justering og redigering af brugerprofiler [NY FUNKTION].
-     * Parametre: level - aktuelt menuniveau, selection - valgt punkt, inst - instrumenttype,
-     *            tuningId - profilindeks, mode - aktuell tilstand, sys - reference til SystemController,
-     *            editFreq - redigeringsfrekvens (kun ved MENU_CUSTOM_FREQ), editString - strengindeks (kun ved MENU_CUSTOM_EDIT).
+     * Formål: Viser det aktuelle menuniveau og valgmuligheder.
+     * Påvirker: Display (clear, text, cursor).
      * Krav: [REQ-UI-101], [REQ-HW-508], [REQ-UI-109]
      */
     void drawMenu(int level, int selection, InstrumentType inst, int tuningId, TuningMode mode,
@@ -1154,7 +1211,7 @@ public:
 
     /* * drawTuningScreen(): Tegner baggrunden for tuning-mode.
      * Formål: Viser instrument, profil, mode og cent-skala.
-     * Parametre: inst - instrumenttype, tuneName - profilnavn, mode - aktuell tilstand.
+     * Påvirker: Display (clear, text, linjer, trekanter).
      * Krav: [REQ-UI-103], [REQ-UI-104]
      */
     void drawTuningScreen(InstrumentType inst, const char* tuneName, TuningMode mode) {
@@ -1178,8 +1235,7 @@ public:
 
     /* * drawMonoFeedback(): Tegner cent-nålen, strengenavn og LOCKED-status.
      * Formål: Visuel feedback for monofonisk tuning.
-     * Parametre: stringIndex - indeks for den matchede streng, cents - cent-afvigelse,
-     *            inst - instrumenttype, profile - aktiv profil, locked - true hvis strengen er stemt.
+     * Påvirker: Display (tekst, trekant, cursor).
      * Krav: [REQ-UI-104], [REQ-UI-105], [REQ-UI-106]
      */
     void drawMonoFeedback(int stringIndex, float cents, InstrumentType inst, const TuningProfile* profile, bool locked) {
@@ -1216,8 +1272,7 @@ public:
 
     /* * drawPolyFeedback(): Tegner op til 6 cent-indikatorer samtidigt.
      * Formål: Polyfonisk visning.
-     * Parametre: data - TuningData-struktur med polyfoniske data,
-     *            inst - instrumenttype, profile - aktiv profil.
+     * Påvirker: Display (tekst, linjer, cirkler).
      * Krav: [REQ-UI-107]
      */
     void drawPolyFeedback(const TuningData& data, InstrumentType inst, const TuningProfile* profile) {
@@ -1250,17 +1305,18 @@ public:
 
     /* * drawStrobeFeedback(): Tegner simuleret strobe-visning.
      * Formål: Ultrahøj præcision via roterende prikker.
-     * Parametre: cents - cent-afvigelse, locked - om strengen er stemt.
+     * Påvirker: Display (cirkler, tekst).
      * Krav: [REQ-UI-108]
      */
     void drawStrobeFeedback(float cents, bool locked) {
         unsigned long now = millis();                                                 // Henter nuværende tid. [REQ-UI-108]
-        if (now - lastStrobeUpdate >= 50) {                                           // Opdaterer hver 50 ms. [REQ-UI-108]
-            lastStrobeUpdate = now;                                                   // Opdaterer tidspunkt. [REQ-UI-108]
-            int speed = abs((int)cents) / 5 + 1;                                      // Hastighed baseret på cent-afvigelse. [REQ-UI-108]
-            if (locked) speed = 0;                                                    // Hvis stemt, ingen rotation. [REQ-UI-108]
-            if (speed > 0 && (now % (20 / speed) == 0)) {                             // Rotationslogik. [REQ-UI-108]
-                lastStrobePhase = (lastStrobePhase + 1) % 12;                         // Skifter fase. [REQ-UI-108]
+        if (!locked) {
+            // Hastighed: 1 trin per X ms — jo større cent-afvigelse, jo hurtigere [REQ-UI-108]
+            int intervalMs = (int)(300.0f / (fabs(cents) + 1.0f));
+            intervalMs = constrain(intervalMs, 20, 500);
+            if (now - lastStrobeUpdate >= (unsigned long)intervalMs) {
+                lastStrobeUpdate = now;
+                lastStrobePhase = (lastStrobePhase + 1) % 12;
             }
         }
         int centerX = 64;                                                             // Centrum X. [REQ-UI-108]
@@ -1284,7 +1340,6 @@ public:
         display->display();                                                           // Opdaterer displayet. [REQ-UI-108]
     }
 };
-
 //----------------------------------------------------------------------------------------------------------------------------------------------------
 // FUNKTION: calculateTuningFeedback – Opdateret med cent-domæne matching [REQ-ALG-210]
 // FORMÅL: Konverterer en målt frekvens i Hz til musikalsk feedback (Strengnavn og Cent-afvigelse) [REQ-UI-104].
@@ -1314,6 +1369,7 @@ void calculateTuningFeedback(float freq, const TuningProfile& profile, int &str,
 //----------------------------------------------------------------------------------------------------------------------------------------------------
 // GLOBALE OBJEKT-INSTANSER
 //----------------------------------------------------------------------------------------------------------------------------------------------------
+// Formål: Opretter de globale instanser af systemets hovedkomponenter. Krav: [REQ-UI-101], [REQ-UI-103], [REQ-ALG-201], [REQ-ALG-202], [REQ-TEC-301]
 SystemController sys;                                                                 // Instantierer systemcontrolleren (central logik). [REQ-UI-101]
 AudioSampler sampler(SAMPLE_RATE, I2S_BUFFER_SIZE);                                   // Instantierer audio-sampler med 20 kHz og 8192 samples buffer. [REQ-TEC-301]
 DSPProcessor dsp(SAMPLE_RATE);                                                        // Instantierer DSP-processor (FFT) med 20 kHz. [REQ-ALG-201]
@@ -1327,7 +1383,7 @@ OLEDUI ui(&display);                                                            
 
 /* * dspTask: Kører på Core 0 med høj prioritet – håndterer al signalbehandling.
  * Formål: Udfører sampling, FFT, YIN og polyfonisk peak‑detektion i realtid.
- * Påvirker: vReal, vImag, yin_buffer, i2s_raw_samples (globale buffere) og sender TuningData til uiTask via kø.
+ * Påvirker: vReal, vImag, yin_buffer, i2s_raw_samples, vRaw (globale buffere) og sender TuningData til uiTask via kø.
  * Krav: [REQ-SW-501], [REQ-ALG-201], [REQ-ALG-202], [REQ-ALG-206], [REQ-ALG-207], [REQ-ALG-208], [REQ-ALG-209], [REQ-ALG-210], [REQ-UI-106]
  */
 void dspTask(void *pvParameters) {
@@ -1363,7 +1419,16 @@ void dspTask(void *pvParameters) {
 
         sampler.read(vReal, currentFFTSize, sys);                                    // Indsamler lyddata via I2S/DMA. [REQ-TEC-301]
 
-        dsp.applyDCFilterAndWindow(currentFFTSize);                                  // Fjerner DC-offset og anvender Hann-vindue. [REQ-ALG-201]
+        // Gem kopi af DC-fjernet rådata til YIN, FØR Hann-vinduet [REQ-ALG-202]
+        {
+            double mean = 0.0;
+            for (int i = 0; i < currentFFTSize; i++) mean += vReal[i];
+            mean /= currentFFTSize;
+            for (int i = 0; i < currentFFTSize; i++)
+                vRaw[i] = vReal[i] - mean; // DC-fjernet, men ikke windowed
+        }
+
+        dsp.applyDCFilterAndWindow(currentFFTSize);                                  // Fjerner DC-offset og anvender Hann-vindue (på vReal). [REQ-ALG-201]
 
         float monoFreq = -1.0f;                                                       // Holder frekvens fra YIN (mono). [REQ-ALG-202]
         int numPeaks = 0;                                                             // Antal fundne peaks i FFT. [REQ-ALG-206]
@@ -1374,7 +1439,7 @@ void dspTask(void *pvParameters) {
 
         if (mode == MODE_MONO || (mode == MODE_AUTO && numPeaks == 1)) {                                                      // Hvis monofonisk eller auto med ét peak: [REQ-UI-108]
             float yinCents = 0.0f;                                                     // Holder cents til YIN (ikke brugt direkte). [REQ-ALG-202]
-            monoFreq = yin.getPitch(vReal, currentFFTSize, SAMPLE_RATE, yinCents);   // Kører YIN-algoritmen. [REQ-ALG-202]
+            monoFreq = yin.getPitch(vRaw, currentFFTSize, SAMPLE_RATE, yinCents);   // Kører YIN-algoritmen på rådata (vRaw). [REQ-ALG-202]
             if (monoFreq > BANDPASS_LOW && monoFreq < BANDPASS_HIGH) {              // Tjekker om frekvens er inden for båndpasset (20‑1000 Hz). [REQ-ALG-205]
                 int matchedString;
                 float rawCents;
@@ -1513,7 +1578,12 @@ void uiTask(void *pvParameters) {
         }
 
         if (xQueueReceive(buttonQueue, &buttonValue, 0) == pdTRUE) {              // Modtager knap-tryk (ikke-blokerende). [REQ-UI-102]
-            if (sys.currentState == STATE_MENU) {                                    // Hvis i menu-tilstand: [REQ-UI-101]
+            if (buttonValue == 2) {
+                // Fodkontakt: altid — skift til menu uanset tilstand [REQ-HW-501]
+                sys.currentState = STATE_MENU;
+                sys.setMenuLevel(MENU_INSTRUMENT);
+                sys.setMenuSelection(0);
+            } else if (sys.currentState == STATE_MENU) {                                    // Hvis i menu-tilstand: [REQ-UI-101]
                 int level = sys.getMenuLevel();                                      // Henter aktuelt menuniveau. [REQ-UI-101]
                 if (level == MENU_INSTRUMENT) {                                      // I instrument-menu: [REQ-UI-101]
                     sys.setMenuLevel(MENU_TUNING_PROFILE);                          // Gå til profil-menu. [REQ-UI-109]
@@ -1553,10 +1623,6 @@ void uiTask(void *pvParameters) {
                 else sys.currentMode = MODE_AUTO;                                   // Skift fra STROBE til AUTO. [REQ-UI-108]
                 sys.unlock();
                 sys.saveMode();                                                     // Gem den nye mode i NVS. [REQ-DAT-401]
-            } else if (buttonValue == 2 && sys.currentState == STATE_TUNING) {     // Fodkontakt-tryk i tuning-tilstand: [REQ-HW-501]
-                sys.currentState = STATE_MENU;                                      // Skift til menu-tilstand. [REQ-UI-101]
-                sys.setMenuLevel(MENU_INSTRUMENT);                                  // Gå til instrument-menu. [REQ-UI-101]
-                sys.setMenuSelection(0);                                            // Sæt selection til 0. [REQ-UI-101]
             }
         }
 
@@ -1586,6 +1652,7 @@ void uiTask(void *pvParameters) {
                     if (activeProfile == nullptr) sys.currentState = STATE_ERROR;   // Fejl: ingen profil. [REQ-SW-504]
                     // LOCKED-status er allerede beregnet i dspTask og gemt i tuningData.locked [REQ-UI-106]
                     if (sys.currentMode == MODE_STROBE) {                            // Strobe-mode: [REQ-UI-108]
+                        display.clearDisplay();                                      // Ryd display før tegning [FIX: manglende clearDisplay]
                         ui.drawStrobeFeedback(tuningData.cents, tuningData.locked); // Tegner strobe-visning. [REQ-UI-108]
                     } else if (sys.currentMode == MODE_POLY && tuningData.hasMultiple) { // Polyfonisk mode: [REQ-UI-107]
                         ui.drawPolyFeedback(tuningData, sys.currentInst, activeProfile); // Tegner polyfonisk visning. [REQ-UI-107]
@@ -1627,6 +1694,8 @@ void setup() {
     if (yin_buffer == nullptr) { sys.currentState = STATE_ERROR; while(1); }        // Fejl: gå i STATE_ERROR og stop. [REQ-SW-504]
     i2s_raw_samples = new int16_t[I2S_BUFFER_SIZE];                                  // Allokerer buffer til I2S rå samples. [REQ-TEC-301]
     if (i2s_raw_samples == nullptr) { sys.currentState = STATE_ERROR; while(1); }   // Fejl: gå i STATE_ERROR og stop. [REQ-SW-504]
+    vRaw = new double[I2S_BUFFER_SIZE];                                              // Allokerer buffer til rå data til YIN [REQ-ALG-202]
+    if (vRaw == nullptr) { sys.currentState = STATE_ERROR; while(1); }              // Fejl: gå i STATE_ERROR og stop. [REQ-SW-504]
 
     pinMode(STATUS_LED, OUTPUT);                                                     // Sætter LED-pin som output. [REQ-HW-502]
     pinMode(ENCODER_CLK, INPUT_PULLUP);                                              // Sætter encoder CLK som input med pull-up. [REQ-UI-102]
@@ -1657,7 +1726,7 @@ void setup() {
     xTaskCreatePinnedToCore(                                                         // Opretter DSP-task på Core 0. [REQ-SW-501]
         dspTask,
         "DSP Task",
-        8192,                                                                         // Stakstørrelse i bytes. [REQ-SW-501]
+        16384,                                                                        // Stakstørrelse i bytes (øget fra 8192). [REQ-SW-501]
         NULL,
         10,                                                                           // Prioritet (høj). [REQ-SW-501]
         NULL,
@@ -1681,6 +1750,7 @@ void setup() {
 //----------------------------------------------------------------------------------------------------------------------------------------------------
 // PROCEDURE: loop – Tom, da FreeRTOS-opgaver overtager [REQ-SW-503]
 // Formål: Holder main-funktionen i live, mens FreeRTOS scheduler styrer opgaverne.
+// Påvirker: Ingen.
 // Krav: [REQ-SW-503]
 //----------------------------------------------------------------------------------------------------------------------------------------------------
 void loop() {
