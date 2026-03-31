@@ -35,6 +35,7 @@ Firmwaren er skrevet i C++/Arduino og kører på FreeRTOS:
 * **DSP (Core 0):** Implementerer `esp-dsp` biblioteket for hardware-accelereret FFT. YIN-algoritmen kører med adaptiv threshold og noise-gate.
 * **UI (Core 1):** Håndterer en event-drevet tilstandsmaskine (FSM), der sikrer, at brugerfladen aldrig lagger, selv under tunge beregninger.
 * **DMA Sampling:** Lyddata streames direkte fra ADC til RAM via DMA (Direct Memory Access) for at minimere CPU-belastning.
+* Softwaren er langt mere avanceret end markeds tilgængelige polytuner versioner.
 
 ## 📦 Installation & Afhængigheder
 
