@@ -1,9 +1,9 @@
 //====================================================================================================================================================
-// PROGRAM: ESP32 AVANCERET POLYFONISK TUNER V4.0.0 - INDUSTRIAL PRÆCISION [SRS V3.0]
+// PROGRAM: ESP32 AVANCERET POLYFONISK TUNER V4.0.0 - INDUSTRIAL PRÆCISION [SRS V4.0]
 //====================================================================================================================================================
 // DOKUMENTTYPE:      ESP32 Firmware
 // DOKUMENT NUMMER:   FW-ESP32-PT-400-2026-REV1
-// SYSTEM:            ESP32 Avanceret Polyfonisk Multi-Instrument Tuner (v4.0.0)
+// SYSTEM:            ESP32 Avanceret Polyfonisk Multi-Instrument Tuner (v4.0.1)
 // DATO:              30. marts 2026
 // FORFATTER:         Jan Engelbrecht Pedersen
 // STATUS:            Industrial Standard / Production Ready
@@ -26,7 +26,7 @@
  * - Brugerdefinerede stemningsprofiler gemt i NVS [NY FUNKTION].
  *
  * * 2. OVERORDNET SYSTEMBESKRIVELSE:
- * Tuneren fungerer som en hybrid-analysator. Den skifter umærkeligt mellem to matematiske domæner:
+ * Tuneren fungerer som en hybrid-analysator. Den skifter sømløst mellem to matematiske domæner:
  * - Polyfonisk Mode: Bruger FFT (Fast Fourier Transform) til at give et øjeblikkeligt overblik over alle strenges stemning.
  * - Monofonisk Mode: Bruger YIN-algoritmen (Autokorrelation) til at finde den præcise frekvens ned til 0.1 cents afvigelse.
  * - Strobe Mode: Simuleret strobe-visning baseret på cent-afvigelse.
@@ -124,7 +124,7 @@
 #define NOISE_GATE_ADC   100              // Definerer minimum ADC-værdi for at betragte signal som aktivt; undgår støj ved stilhed [REQ-HW-509]. [REQ-HW-509]
 #define CLIPPING_THRESH_DEFAULT 3000      // Definerer standard tærskel for clipping-detektion; kalibreret for 3,3V reference [REQ-HW-508]. [REQ-HW-508]
 #define CENTS_SCALE_FACTOR 2.0f           // Definerer skalering for cent-visning; 2 pixels per cent giver 100 pixels for ±50 cent [REQ-UI-104]. [REQ-UI-104]
-#define LOCKED_THRESHOLD 1.5f             // Definerer tærskel for "LOCKED" i cents; streng anses stemt inden for ±1,5 cent [REQ-UI-106]. [REQ-UI-106]
+#define LOCKED_THRESHOLD 0.5f             // Definerer tærskel for "LOCKED" i cents; streng anses stemt inden for ±0,5 cent [REQ-UI-106]. [REQ-UI-106]
 #define YIN_TAU_MAX      500              // Definerer maksimal tau for YIN; svarer til 40 Hz ved 20 kHz, reducerer beregningstid [REQ-ALG-204]. [REQ-ALG-204]
 #define YIN_THRESHOLD    0.15f            // Definerer standard tærskel for YIN's periodicitet; 0,15 giver god balance mellem støj og præcision. [REQ-ALG-202]
 #define YIN_ADAPTIVE_FACTOR 0.5f          // Definerer faktor for adaptiv threshold; justeres baseret på signalstyrke [REQ-ALG-205]. [REQ-ALG-205]
@@ -196,6 +196,7 @@ const char* bass5StringNames[5] = {"B0", "E1", "A1", "D2", "G2"};             //
 struct TuningData {
     int stringIndex;            // Index for den streng, der er matchet (mono mode). [REQ-ALG-210]
     float cents;                // Cent-afvigelse (mono mode). [REQ-UI-104]
+    bool locked;                // True hvis strengen har været stabil inden for LOCKED_THRESHOLD i ≥200 ms [REQ-UI-106].
     bool hasMultiple;           // True hvis polyfonisk mode har data. [REQ-UI-107]
     struct PolyData {
         int stringIndex;        // Streng-index (0-5). [REQ-ALG-210]
@@ -203,7 +204,6 @@ struct TuningData {
         bool active;            // Om denne streng er detekteret. [REQ-UI-107]
     } poly[6];                  // Op til 6 strenge. [REQ-UI-107]
 };
-
 //----------------------------------------------------------------------------------------------------------------------------------------------------
 // GLOBALE BUFFERE (allokeres dynamisk i setup)
 //----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1328,7 +1328,7 @@ OLEDUI ui(&display);                                                            
 /* * dspTask: Kører på Core 0 med høj prioritet – håndterer al signalbehandling.
  * Formål: Udfører sampling, FFT, YIN og polyfonisk peak‑detektion i realtid.
  * Påvirker: vReal, vImag, yin_buffer, i2s_raw_samples (globale buffere) og sender TuningData til uiTask via kø.
- * Krav: [REQ-SW-501], [REQ-ALG-201], [REQ-ALG-202], [REQ-ALG-206], [REQ-ALG-207], [REQ-ALG-208], [REQ-ALG-209], [REQ-ALG-210]
+ * Krav: [REQ-SW-501], [REQ-ALG-201], [REQ-ALG-202], [REQ-ALG-206], [REQ-ALG-207], [REQ-ALG-208], [REQ-ALG-209], [REQ-ALG-210], [REQ-UI-106]
  */
 void dspTask(void *pvParameters) {
     float peakFreqs[NUM_PEAKS];                                                       // Array til at holde fundne peak-frekvenser. [REQ-ALG-206]
@@ -1336,6 +1336,10 @@ void dspTask(void *pvParameters) {
     TuningData tuningData;                                                            // Struktur til data, der sendes til UI. [REQ-SW-501]
     const TuningProfile* activeProfile = nullptr;                                     // Pointer til aktuelt valgt stemmeprofil. [REQ-UI-109]
     int currentFFTSize = FFT_SIZE_GUITAR;                                             // Aktuel FFT-størrelse (skifter mellem guitar/bas). [REQ-ALG-208]
+
+    // Variabler til LOCKED-stabilitet (200 ms krav) [REQ-UI-106]
+    unsigned long lockedStartTime = 0;                                                // Tidspunkt hvor cent-afvigelse faldt under tærsklen. [REQ-UI-106]
+    bool prevInLockRange = false;                                                     // Om forrige sample var inden for LOCKED_THRESHOLD. [REQ-UI-106]
 
     while (1) {
         sys.lock();
@@ -1379,17 +1383,46 @@ void dspTask(void *pvParameters) {
                 tuningData.hasMultiple = false;                                      // Mono-mode: kun én streng. [REQ-UI-103]
                 tuningData.stringIndex = matchedString;                              // Sætter strengindex. [REQ-ALG-210]
                 tuningData.cents = filteredCents;                                    // Sætter cents-afvigelse. [REQ-UI-104]
-                DEBUG_PRINT("Mono match: %s (idx %d) freq=%.2f Hz, cents=%.2f\n",
+
+                // Implementér LOCKED-stabilitet (200 ms) [REQ-UI-106]
+                bool inLockRange = (fabs(filteredCents) < LOCKED_THRESHOLD);
+                if (inLockRange) {
+                    if (!prevInLockRange) {
+                        // Lige kommet inden for tærsklen, start timer
+                        lockedStartTime = millis();
+                        prevInLockRange = true;
+                        tuningData.locked = false;
+                    } else {
+                        // Allerede inden for tærsklen, tjek om 200 ms er nået
+                        if ((millis() - lockedStartTime) >= 200) {
+                            tuningData.locked = true;
+                        } else {
+                            tuningData.locked = false;
+                        }
+                    }
+                } else {
+                    // Ude af tærsklen, nulstil
+                    prevInLockRange = false;
+                    lockedStartTime = 0;
+                    tuningData.locked = false;
+                }
+
+                DEBUG_PRINT("Mono match: %s (idx %d) freq=%.2f Hz, cents=%.2f, locked=%d\n",
                             (inst==INST_GUITAR?guitarStringNames[matchedString]:
                              inst==INST_BASS_4?bass4StringNames[matchedString]:bass5StringNames[matchedString]),
-                            matchedString, monoFreq, filteredCents);
+                            matchedString, monoFreq, filteredCents, tuningData.locked);
             } else {
                 tuningData.hasMultiple = false;                                      // Ingen gyldig tone detekteret. [REQ-ALG-205]
                 tuningData.stringIndex = -1;                                          // Marker ugyldig streng. [REQ-ALG-210]
                 tuningData.cents = 0.0f;
+                tuningData.locked = false;
+                // Nulstil locked-timer ved tab af signal
+                prevInLockRange = false;
+                lockedStartTime = 0;
             }
         } else if (mode == MODE_POLY || (mode == MODE_AUTO && numPeaks > 1)) {                                                // Polyfonisk eller auto med flere peaks: [REQ-UI-107]
             tuningData.hasMultiple = true;                                           // Angiver at der er polyfoniske data. [REQ-UI-107]
+            tuningData.locked = false;                                               // LOCKED anvendes ikke i polyfonisk visning. [REQ-UI-106]
             for (int i = 0; i < 6; i++) {
                 tuningData.poly[i].active = false;                                   // Nulstiller alle poly-data. [REQ-UI-107]
                 tuningData.poly[i].stringIndex = -1;
@@ -1423,11 +1456,10 @@ void dspTask(void *pvParameters) {
         vTaskDelay(1);                                                               // Kort pause for at give UI-task CPU-tid. [REQ-SW-503]
     }
 }
-
 /* * uiTask: Kører på Core 1 – håndterer display, menu, LED, brugerinput. Opdateret med settings-menu og brugerprofilredigering.
  * Formål: Reagerer på brugerinput (encoder, knapper), opdaterer display og LED, og modtager TuningData fra dspTask.
  * Påvirker: Display, status-LED, systemtilstande, NVS-lagring.
- * Krav: [REQ-SW-501], [REQ-UI-101], [REQ-HW-502], [REQ-HW-504], [REQ-HW-510]
+ * Krav: [REQ-SW-501], [REQ-UI-101], [REQ-HW-502], [REQ-HW-504], [REQ-HW-510], [REQ-UI-106]
  */
 void uiTask(void *pvParameters) {
     int encoderDelta = 0;                                                              // Modtager delta-værdi fra encoder-kø. [REQ-UI-102]
@@ -1552,15 +1584,16 @@ void uiTask(void *pvParameters) {
                     activeProfile = sys.getProfile();                                // Henter aktiv profil. [REQ-UI-109]
                     sys.unlock();
                     if (activeProfile == nullptr) sys.currentState = STATE_ERROR;   // Fejl: ingen profil. [REQ-SW-504]
-                    bool locked = (fabs(tuningData.cents) < LOCKED_THRESHOLD);       // Tjekker om strengen er stemt (indenfor ±1,5 cent). [REQ-UI-106]
+                    // LOCKED-status er allerede beregnet i dspTask og gemt i tuningData.locked [REQ-UI-106]
                     if (sys.currentMode == MODE_STROBE) {                            // Strobe-mode: [REQ-UI-108]
-                        ui.drawStrobeFeedback(tuningData.cents, locked);            // Tegner strobe-visning. [REQ-UI-108]
+                        ui.drawStrobeFeedback(tuningData.cents, tuningData.locked); // Tegner strobe-visning. [REQ-UI-108]
                     } else if (sys.currentMode == MODE_POLY && tuningData.hasMultiple) { // Polyfonisk mode: [REQ-UI-107]
                         ui.drawPolyFeedback(tuningData, sys.currentInst, activeProfile); // Tegner polyfonisk visning. [REQ-UI-107]
                     } else {                                                         // Mono-mode (eller auto med én streng). [REQ-UI-104]
                         ui.drawTuningScreen(sys.currentInst, activeProfile->name, sys.currentMode); // Tegner baggrund. [REQ-UI-103]
                         if (tuningData.stringIndex >= 0) {                          // Hvis en streng er matchet: [REQ-ALG-210]
-                            ui.drawMonoFeedback(tuningData.stringIndex, tuningData.cents, sys.currentInst, activeProfile, locked); // Tegner mono-feedback. [REQ-UI-104]
+                            ui.drawMonoFeedback(tuningData.stringIndex, tuningData.cents, sys.currentInst,
+                                                activeProfile, tuningData.locked); // Tegner mono-feedback med locked-status. [REQ-UI-104] [REQ-UI-106]
                         }
                     }
                 }
