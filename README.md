@@ -1,4 +1,4 @@
-# ESP32 Polytuner v4.0.0 - Industrial Precision Tuning Pedal
+# ESP32 Polytuner v4.0.1 - Industrial Precision Tuning Pedal
 
 ESP32 Polytuner er en avanceret, industriel polyfonisk stemmepedal til guitar og bas, designet til at overgå markedsstandarder som TC Electronic 
 Polytune 3. Ved at udnytte ESP32'erens dual-core arkitektur og hardware-accelereret DSP, leverer dette projekt lynhurtig polyfonisk detektion og 
