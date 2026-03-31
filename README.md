@@ -23,7 +23,8 @@ Systemet er bygget op omkring en **DEVIT V1 ESP32-32 Development Board, 36Pins**
 1.  **Analog Front-End (AFE):** Benytter en Maxim Integrated Rail-to-Rail CMOS operationsforstærker optimeret til 3.3V drift. Dette sikrer maksimalt 
     headroom for både passive og high-output aktive pickupper.
 2.  **Buffered Thru-Output:** Signalet splittes efter indgangsbufferen og føres gennem en dedikeret udgangsbuffer med DC-blokering (47uF), hvilket 
-    gør pedalen ideel som det første led i en professionel signalkæde.
+    gør pedalen ideel som det første led i en professionel signalkæde. Man får en buffer der sikrer at evt. signaltab ikke er tilstede i 
+    effektkæden.
 3.  **Brugerflade:** Et høj-kontrast SSD1306 OLED-display sikrer læsbarhed på mørke scener, assisteret af en industri-standard rotary encoder til 
     navigation.
 4.  **Sikkerhed:** Inkluderer I2C Watchdog med auto-recovery, adaptiv clipping-detektion og batteriovervågning.
