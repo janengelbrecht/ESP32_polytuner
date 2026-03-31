@@ -3,7 +3,8 @@
 ESP32 Polytuner er en avanceret, industriel polyfonisk stemmepedal til guitar og bas, designet til at overgå markedsstandarder som TC Electronic 
 Polytune 3. Ved at udnytte ESP32'erens dual-core arkitektur og hardware-accelereret DSP, leverer dette projekt lynhurtig polyfonisk detektion og 
 ekstrem monofonisk præcision (±0.1 cents).
-Det anvender færdigt DEVIT V1 ESP32-32 Development Board, 36Pins modul for at slippe for dyr og omstændig RF godkendelse.
+Det anvender færdigt DEVIT V1 ESP32-32 Development Board, 36Pins modul for at slippe for dyr og omstændig RF godkendelse:
+https://www.aliexpress.com/item/1005010739940143.html?spm=a2g0o.productlist.main.3.19adPf2dPf2dB3&algo_pvid=3759358a-e156-4956-a9b9-c7689d256605&algo_exp_id=3759358a-e156-4956-a9b9-c7689d256605-2&pdp_ext_f=%7B%22order%22%3A%22-1%22%2C%22eval%22%3A%221%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21DKK%2187.17%2169.74%21%21%2113.10%2110.48%21%40211b876717749177995738376e0b0b%2112000053361056812%21sea%21DK%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3Af14da666%3Bm03_new_user%3A-29895&curPageLogUid=RF09V4xjevpP&utparam-url=scene%3Asearch%7Cquery_from%3A%7Cx_object_id%3A1005010739940143%7C_p_origin_prod%3A#nav-specification
 
 ## 🚀 Key Features
 
