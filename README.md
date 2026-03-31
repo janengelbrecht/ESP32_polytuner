@@ -17,7 +17,7 @@ Det anvender færdigt DEVIT V1 ESP32-32 Development Board, 36Pins modul for at s
 
 ## 🛠 Hardware Arkitektur
 
-Systemet er bygget op omkring en **ESP32-WROOM-32** og en avanceret analog front-end (AFE):
+Systemet er bygget op omkring en **DEVIT V1 ESP32-32 Development Board, 36Pins** og en avanceret analog front-end (AFE):
 
 1.  **Analog Front-End (AFE):** Benytter en Maxim Integrated Rail-to-Rail CMOS operationsforstærker optimeret til 3.3V drift. Dette sikrer maksimalt 
     headroom for både passive og high-output aktive pickupper.
